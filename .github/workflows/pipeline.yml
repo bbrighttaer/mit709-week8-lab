@@ -1,0 +1,124 @@
+# StudySpace pipeline for the MIT709 Week 8 lab. Save as .github/workflows/pipeline.yml.
+# This is the Week 7 pipeline (rules CI-01 to CI-14) with two changes:
+#   - the new telemetry module is added to CI-03 (tests and coverage), CI-05 (release
+#     artefact) and CI-08 (Bandit);
+#   - a new job, CI-15, builds the quality dashboard and shows it on the run's Summary page.
+
+name: studyspace-pipeline
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, security and dependency checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: CI-07 lint (Ruff)
+        run: ruff check .
+      - name: CI-08 code security (Bandit)
+        run: bandit booking_rules.py booking_store.py usage_report.py telemetry.py
+      - name: CI-09 dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt
+      - name: CI-10 workflow audit (zizmor)
+        run: zizmor --offline .github/workflows/
+
+  test:
+    name: Tests, coverage and mutation gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: CI-03 tests with coverage gate
+        run: pytest test_booking_rules.py test_booking_store.py test_usage_report.py test_telemetry.py --cov=booking_rules --cov=booking_store --cov=usage_report --cov=telemetry --cov-branch --cov-report=term-missing --cov-fail-under=90
+      - name: CI-04 mutation score gate
+        run: python mutants.py test_booking_rules.py --min-score 90
+
+
+  dashboard:
+    name: CI-15 quality dashboard
+    needs: [checks, test]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history, for analyse_outcomes.py
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Create the reports folder
+        run: mkdir -p reports
+      - name: Tests and coverage report
+        continue-on-error: true
+        run: pytest test_booking_rules.py test_booking_store.py test_usage_report.py test_telemetry.py --cov=booking_rules --cov=booking_store --cov=usage_report --cov=telemetry --cov-branch --cov-report=json:reports/coverage.json --junitxml=reports/junit.xml -q
+      - name: Mutation report
+        continue-on-error: true
+        run: python mutants.py test_booking_rules.py > reports/mutation.txt
+      - name: Complexity report
+        continue-on-error: true
+        run: radon cc booking_rules.py booking_store.py usage_report.py telemetry.py -j > reports/radon.json
+      - name: RED signals from simulated load
+        continue-on-error: true
+        run: python simulate_load.py
+      - name: Performance benchmark (trend only)
+        continue-on-error: true
+        run: pytest bench_usage_report.py --module usage_report --benchmark-json=reports/benchmark.json -q
+      - name: AI-assisted outcomes from git history
+        continue-on-error: true
+        run: python analyse_outcomes.py .
+      - name: Publish the dashboard to the job summary
+        run: python dashboard.py >> "$GITHUB_STEP_SUMMARY"
+
+  deliver:
+    name: Deliver release artefact
+    needs: [checks, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: CI-05 upload release artefact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: studyspace-release
+          path: |
+            booking_rules.py
+            booking_store.py
+            usage_report.py
+            telemetry.py

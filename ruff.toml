@@ -1,0 +1,9 @@
+# StudySpace lint settings (rule CI-14 from Week 7).
+# The Week 8 teaching sample is not StudySpace code, so it is not linted.
+extend-exclude = ["ai_instrumentation_sample.py"]
+
+[lint]
+extend-select = ["C901"]
+
+[lint.mccabe]
+max-complexity = 10
