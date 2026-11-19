@@ -3,8 +3,10 @@
 Task 1: add telemetry to create_booking, following telemetry-spec.md.
 """
 import secrets
+import time
 
 import booking_rules
+import telemetry
 
 
 def create_booking(bookings, student_email, room, start, end, now):
@@ -14,16 +16,37 @@ def create_booking(bookings, student_email, room, start, end, now):
     Returns the new booking's id and its check-in code.
     Raises ValueError if a booking rule says no.
     """
-    booking_rules.check_duration(start, end)
-    booking_rules.check_booking_limit(bookings, student_email, now)
-    booking_id = len(bookings) + 1
-    code = secrets.token_hex(8)
-    bookings.append({
-        "id": booking_id,
-        "room": room,
-        "student_email": student_email,
-        "start": start,
-        "end": end,
-        "checkin_code": code,
-    })
-    return booking_id, code
+    start_time = time.perf_counter()
+    outcome = "error"
+    fields = {"story": "US-03", "room": room}
+    try:
+        booking_rules.check_duration(start, end)
+        booking_rules.check_booking_limit(bookings, student_email, now)
+        booking_id = len(bookings) + 1
+        code = secrets.token_hex(8)
+        bookings.append({
+            "id": booking_id,
+            "room": room,
+            "student_email": student_email,
+            "start": start,
+            "end": end,
+            "checkin_code": code,
+        })
+        outcome = "ok"
+        fields["booking_id"] = booking_id
+        return booking_id, code
+    except ValueError as e:
+        outcome = "rejected"
+        fields["reason"] = str(e)
+        raise
+    except Exception as e:
+        outcome = "error"
+        fields["error"] = type(e).__name__
+        raise
+    finally:
+        telemetry.record(
+            "create_booking",
+            outcome,
+            time.perf_counter() - start_time,
+            **fields,
+        )
