@@ -2,8 +2,4 @@
 __pycache__/
 .pytest_cache/
 .ruff_cache/
-.coverage
-.benchmarks/
 reports/
-studyspace-history/
-studyspace-history.bundle

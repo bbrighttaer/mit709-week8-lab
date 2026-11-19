@@ -1,45 +1,27 @@
-"""AI-suggested instrumentation for create_booking (US-03, US-04 / PS-03, PS-04).
+"""AI-suggested telemetry for create_booking. Read it; do not use it.
 
-MIT709 Week 8, lab Task 1. This is a TEACHING SAMPLE. 
-Read it; do not use it. It runs, and it produces logs and metrics, but
-it breaks several of the rules in telemetry-spec.md.
+MIT709 Week 8, Task 1. A TEACHING SAMPLE. It runs, but it breaks
+most of the rules in telemetry-spec.md. Can you find which?
 """
-import logging
+import secrets
 import time
-from datetime import datetime
-
-from prometheus_client import Counter, Histogram
 
 import booking_rules
-from booking_store import make_checkin_code
-
-log = logging.getLogger("studyspace")
-
-BOOKINGS = Counter("bookings_total", "Number of bookings", ["student", "room", "status"])
-LATENCY = Histogram("booking_latency_seconds", "Booking latency")
+import telemetry
 
 
-def create_booking(conn, student_email, room_id, start, end, now):
-    """Create a booking and record logs and metrics."""
+def create_booking(bookings, student_email, room, start, end, now):
     started = time.time()
     try:
         booking_rules.check_duration(start, end)
-        rows = conn.execute(
-            "SELECT start FROM bookings WHERE student_email = ?", (student_email,)
-        ).fetchall()
-        booking_rules.check_booking_limit([datetime.fromisoformat(r[0]) for r in rows], now)
-        code = make_checkin_code()
-        cur = conn.execute(
-            "INSERT INTO bookings (room_id, student_email, start, end, checkin_code) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (room_id, student_email, start.isoformat(), end.isoformat(), code),
-        )
-        conn.commit()
-        LATENCY.observe(time.time() - started)
-        BOOKINGS.labels(student=student_email, room=str(room_id), status="success").inc()
-        log.info(f"Booking {cur.lastrowid} created for {student_email} in room {room_id}, code {code}")
-        return cur.lastrowid, code
+        booking_rules.check_booking_limit(bookings, student_email, now)
+        booking_id = len(bookings) + 1
+        code = secrets.token_hex(8)
+        bookings.append({"id": booking_id, "room": room, "student_email": student_email,
+                         "start": start, "end": end, "checkin_code": code})
+        telemetry.record("create_booking", "ok", time.time() - started,
+                         student=student_email, code=code)
+        return booking_id, code
     except Exception as e:
-        BOOKINGS.labels(student=student_email, room=str(room_id), status="error").inc()
-        log.error(f"Booking failed for {student_email}: {e}")
+        telemetry.record("create_booking", "error", 0, message=str(e))
         return None, None

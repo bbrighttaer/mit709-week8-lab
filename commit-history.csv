@@ -1,0 +1,29 @@
+date,subject,kind,ai_assisted,lines_changed,fixed_within_7_days
+2026-09-14,chore: start StudySpace project,chore,no,5,no
+2026-09-15,feat: booking rules for US-03 to US-05,feat,yes,21,yes
+2026-09-16,test: acceptance tests for US-03 to US-05,test,no,91,no
+2026-09-17,fix: booking rules match PS-03 to PS-05 boundaries,fix,no,78,no
+2026-09-22,"feat: booking store with search, booking and report export",feat,yes,123,yes
+2026-09-23,test: acceptance and security tests for the store,test,no,130,no
+2026-09-24,fix: SEC-01 to SEC-05 security fixes in booking store,fix,no,72,no
+2026-09-29,test: AI-generated unit tests for booking rules,test,yes,87,no
+2026-09-30,test: add boundary tests that kill surviving mutants,test,no,220,no
+2026-10-01,ci: run tests with coverage and mutation gates,ci,no,18,no
+2026-10-06,ci: AI-drafted delivery pipeline,ci,yes,51,yes
+2026-10-07,fix(ci): pin actions by SHA and use a read-only token,fix,no,93,no
+2026-10-08,chore: upgrade pytest to 9.0.3 (PYSEC-2026-1845),chore,no,2,no
+2026-10-13,feat: daily usage report for library staff (US-09),feat,yes,180,yes
+2026-10-14,fix: RV-01 count bookings by full date,fix,no,2,yes
+2026-10-14,fix: RV-02 check-in window is inclusive (PS-06),fix,no,4,yes
+2026-10-14,fix: RV-03 remove student emails from the report,fix,no,5,no
+2026-10-15,refactor: split build_daily_report into helpers,refactor,yes,143,no
+2026-10-16,ci: add complexity gate CI-14,ci,no,5,no
+2026-10-20,feat: check in with the QR code (US-07),feat,yes,13,yes
+2026-10-21,test: check-in tests,test,no,19,yes
+2026-10-23,fix: close check-in 15 minutes after the start (PS-06),fix,no,8,yes
+2026-10-27,feat: staff can block rooms (US-08),feat,no,7,yes
+2026-10-29,fix: hide blocked rooms from search (PS-08),fix,no,6,no
+2026-11-02,docs: explain how to run the tests,docs,yes,12,no
+2026-11-03,refactor: clearer names in booking store,refactor,yes,10,no
+2026-11-10,feat: filter rooms by accessible features (US-10),feat,yes,14,no
+2026-11-10,test: accessible-feature filter tests,test,yes,17,no
